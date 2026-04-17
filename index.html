@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>宝妈卫士 · 演示</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { margin: 0; background: #e5e7eb; font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', sans-serif; }
+    * { box-sizing: border-box; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
+    .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useMemo } = React;
+
+    // ── 简单 SVG 图标 ──────────────────────────────
+    const Svg = ({size=20, children, ...p}) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+        {children}
+      </svg>
+    );
+    const Camera = ({size=20,...p}) => <Svg size={size} {...p}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></Svg>;
+    const Search = ({size=20,...p}) => <Svg size={size} {...p}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></Svg>;
+    const History = ({size=20,...p}) => <Svg size={size} {...p}><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.75"/></Svg>;
+    const Baby = ({size=20,...p}) => <Svg size={size} {...p}><path d="M9 12h6"/><path d="M12 9v6"/><circle cx="12" cy="8" r="3"/><path d="M6 20a6 6 0 0 1 12 0"/></Svg>;
+    const X = ({size=20,...p}) => <Svg size={size} {...p}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></Svg>;
+    const ChevronDown = ({size=20,...p}) => <Svg size={size} {...p}><polyline points="6 9 12 15 18 9"/></Svg>;
+    const AlertCircle = ({size=20,...p}) => <Svg size={size} {...p}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></Svg>;
+    const Shield = ({size=20,...p}) => <Svg size={size} {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></Svg>;
+
+    // ══════════════════════════════════════════════
+    //  匹配引擎
+    // ══════════════════════════════════════════════
+    const ADDITIVES_DB = [
+      { name: '山梨酸钾', risk: 'medium', category: '防腐剂', effects: { g6pd: false, pku: false, asthma: true, eczema: false, adhd: false, lactose: false, ibs: false, kidney: false, liver: false } },
+      { name: '柠檬黄', risk: 'high', category: '人工色素', effects: { g6pd: false, pku: false, asthma: true, eczema: false, adhd: true, lactose: false, ibs: false, kidney: false, liver: false } },
+      { name: '诱惑红', risk: 'high', category: '人工色素', effects: { g6pd: false, pku: false, asthma: false, eczema: false, adhd: true, lactose: false, ibs: false, kidney: false, liver: false } },
+      { name: '日落黄', risk: 'high', category: '人工色素', effects: { g6pd: false, pku: false, asthma: true, eczema: false, adhd: true, lactose: false, ibs: false, kidney: false, liver: false } },
+      { name: '单甘油脂肪酸酯', risk: 'low', category: '乳化剂', effects: {} },
+      { name: '卵磷脂', risk: 'low', category: '乳化剂', effects: {} },
+      { name: '柠檬酸', risk: 'safe', category: '酸味剂', effects: {} },
+      { name: '人工香精', risk: 'medium', category: '香精', effects: { g6pd: false, pku: false, asthma: true, eczema: true, adhd: false, lactose: false, ibs: false, kidney: false, liver: false } },
+      { name: '天然香精', risk: 'low', category: '香精', effects: {} },
+      { name: '食用香精', risk: 'medium', category: '香精', effects: { asthma: true } },
+      { name: '碳酸氢钠', risk: 'safe', category: '膨发剂', effects: {} },
+      { name: '苯甲酸钠', risk: 'high', category: '防腐剂', effects: { g6pd: false, pku: false, asthma: true, eczema: true, adhd: true, lactose: false, ibs: false, kidney: false, liver: false } },
+      { name: '黄原胶', risk: 'low', category: '增稠剂', effects: { ibs: true } },
+      { name: '维生素C', risk: 'safe', category: '抗氧化剂', effects: {} },
+      { name: '抗坏血酸', risk: 'safe', category: '抗氧化剂', effects: {} },
+      { name: '天然胡萝卜素', risk: 'safe', category: '天然色素', effects: {} },
+      { name: '谷氨酸钠', risk: 'medium', category: '增味剂', effects: { adhd: true, kidney: true } },
+      { name: '二丁基羟基甲苯', risk: 'high', category: '合成抗氧化剂', effects: { asthma: true, eczema: true, liver: true } },
+      { name: '丁基羟基茴香醚', risk: 'high', category: '合成抗氧化剂', effects: { asthma: true, eczema: true, liver: true } },
+      { name: '卡拉胶', risk: 'medium', category: '增稠剂', effects: { ibs: true } },
+      { name: '安赛蜜', risk: 'medium', category: '人工甜味剂', effects: { kidney: true } },
+      { name: '三氯蔗糖', risk: 'medium', category: '人工甜味剂', effects: { ibs: true } },
+      { name: '阿斯巴甜', risk: 'high', category: '人工甜味剂', effects: { pku: true } },
+      { name: '山梨糖醇', risk: 'low', category: '糖醇', effects: { ibs: true } },
+    ];
+
+    const CONDITIONS_MAP = {
+      'g6pd':   { label: '蚕豆病(G6PD缺乏症)', icon: '🫘' },
+      'pku':    { label: '苯丙酮尿症(PKU)', icon: '🧬' },
+      'asthma': { label: '哮喘', icon: '🫁' },
+      'eczema': { label: '湿疹/特应性皮炎', icon: '🌿' },
+      'adhd':   { label: '多动症(ADHD)', icon: '⚡' },
+      'lactose':{ label: '乳糖不耐受', icon: '🥛' },
+      'ibs':    { label: '肠道敏感', icon: '🫃' },
+      'kidney': { label: '肾脏疾病', icon: '🫘' },
+      'liver':  { label: '肝脏疾病', icon: '🍃' },
+    };
+
+    const RISK_ORDER = ['high', 'medium', 'low', 'safe'];
+
+    function assessProduct(productAdditives = [], babyConditions = []) {
+      const riskCounts = { high: [], medium: [], low: [], safe: [] };
+      const personalWarnings = [];
+
+      productAdditives.forEach(additiveName => {
+        const additive = ADDITIVES_DB.find(a => a.name === additiveName);
+        if (!additive) { riskCounts.safe.push(additiveName); return; }
+        const isPersonal = babyConditions.some(c => additive.effects && additive.effects[c]);
+        if (isPersonal) personalWarnings.push({ additive: additiveName, risk: additive.risk, category: additive.category });
+        riskCounts[additive.risk].push(additiveName);
+      });
+
+      const maxRisk = RISK_ORDER.find(r => riskCounts[r].length > 0) || 'safe';
+      return { maxRisk, riskCounts, personalWarnings, hasPersonalWarnings: personalWarnings.length > 0 };
+    }
+
+    // ══════════════════════════════════════════════
+    //  产品数据库（精简 100 款）
+    // ══════════════════════════════════════════════
+    const PRODUCTS_DB = [
+      // 饼干糕点
+      {id:'P0001',barcode:'6902083001018',name:'好丽友派 巧克力味',brand:'好丽友',category:'饼干糕点',subcategory:'夹心蛋糕',emoji:'🍫',netWeight:'192g',additives:['山梨酸钾','柠檬黄','单甘油脂肪酸酯','卵磷脂','柠檬酸','人工香精'],note:'含人工色素，多动症宝宝慎选'},
+      {id:'P0002',barcode:'6902083001025',name:'好丽友派 草莓味',brand:'好丽友',category:'饼干糕点',subcategory:'夹心蛋糕',emoji:'🍓',netWeight:'192g',additives:['山梨酸钾','诱惑红','单甘油脂肪酸酯','卵磷脂','柠檬酸','人工香精'],note:'草莓色素来自诱惑红'},
+      {id:'P0003',barcode:'6902083001032',name:'好丽友蒙拿宝 奥利奥夹心',brand:'好丽友',category:'饼干糕点',subcategory:'威化饼干',emoji:'🍪',netWeight:'264g',additives:['山梨酸钾','卵磷脂','碳酸氢钠','单甘油脂肪酸酯','柠檬酸'],note:'防腐剂含量偏高'},
+      {id:'P0004',barcode:'7622300001014',name:'奥利奥 原味夹心饼干',brand:'奥利奥',category:'饼干糕点',subcategory:'夹心饼干',emoji:'🍪',netWeight:'390g',additives:['卵磷脂','碳酸氢钠','食用香精','柠檬酸','单甘油脂肪酸酯'],note:'香精需关注'},
+      {id:'P0005',barcode:'7622300001021',name:'奥利奥 草莓味夹心饼干',brand:'奥利奥',category:'饼干糕点',subcategory:'夹心饼干',emoji:'🍓',netWeight:'390g',additives:['卵磷脂','诱惑红','碳酸氢钠','食用香精','柠檬酸'],note:'含人工色素诱惑红'},
+      {id:'P0006',barcode:'7622300001038',name:'奥利奥 抹茶味夹心饼干',brand:'奥利奥',category:'饼干糕点',subcategory:'夹心饼干',emoji:'🍵',netWeight:'390g',additives:['卵磷脂','天然胡萝卜素','碳酸氢钠','柠檬酸','黄原胶'],note:'天然色素，相对友好'},
+      {id:'P0007',barcode:'6920365001015',name:'达利园 法式软面包',brand:'达利园',category:'饼干糕点',subcategory:'面包',emoji:'🍞',netWeight:'400g',additives:['山梨酸钾','单甘油脂肪酸酯','卵磷脂','碳酸氢钠','柠檬酸','人工香精'],note:'防腐剂+香精'},
+      {id:'P0008',barcode:'6920365001022',name:'达利园 好吃点 椰奶味',brand:'达利园',category:'饼干糕点',subcategory:'酥性饼干',emoji:'🥥',netWeight:'360g',additives:['碳酸氢钠','单甘油脂肪酸酯','柠檬酸','卵磷脂'],note:'配料简单'},
+      {id:'P0009',barcode:'6906659001014',name:'嘉士利 威化饼干 香草味',brand:'嘉士利',category:'饼干糕点',subcategory:'威化饼干',emoji:'🧇',netWeight:'400g',additives:['卵磷脂','碳酸氢钠','人工香精','柠檬酸','单甘油脂肪酸酯'],note:'香精需关注'},
+      {id:'P0010',barcode:'6906659001021',name:'嘉士利 草莓夹心饼干',brand:'嘉士利',category:'饼干糕点',subcategory:'夹心饼干',emoji:'🍓',netWeight:'300g',additives:['山梨酸钾','诱惑红','卵磷脂','柠檬酸','碳酸氢钠','人工香精']},
+      {id:'P0011',barcode:'6907861001013',name:'徐福记 沙琪玛',brand:'徐福记',category:'饼干糕点',subcategory:'糕点',emoji:'🧁',netWeight:'500g',additives:['碳酸氢钠','卵磷脂','单甘油脂肪酸酯','柠檬酸'],note:'配料简单'},
+      {id:'P0012',barcode:'6907861001020',name:'徐福记 核桃酥',brand:'徐福记',category:'饼干糕点',subcategory:'糕点',emoji:'🥜',netWeight:'480g',additives:['碳酸氢钠','卵磷脂','柠檬酸','单甘油脂肪酸酯'],note:'坚果过敏注意'},
+      {id:'P0013',barcode:'7622210001012',name:'亿滋趣多多 巧克力豆饼干',brand:'亿滋',category:'饼干糕点',subcategory:'曲奇饼干',emoji:'🍪',netWeight:'280g',additives:['卵磷脂','碳酸氢钠','人工香精','柠檬酸','单甘油脂肪酸酯'],note:'香精需关注'},
+      {id:'P0016',barcode:'6902083001049',name:'好丽友 蛋黄派',brand:'好丽友',category:'饼干糕点',subcategory:'夹心蛋糕',emoji:'🥚',netWeight:'180g',additives:['山梨酸钾','单甘油脂肪酸酯','卵磷脂','碳酸氢钠','人工香精','柠檬酸'],note:'防腐剂+香精'},
+      {id:'P0017',barcode:'7622300001045',name:'奥利奥 生日蛋糕味',brand:'奥利奥',category:'饼干糕点',subcategory:'夹心饼干',emoji:'🎂',netWeight:'390g',additives:['卵磷脂','柠檬黄','诱惑红','碳酸氢钠','食用香精','柠檬酸'],note:'双重人工色素！ADHD宝宝高风险'},
+      {id:'P0019',barcode:'7622210001029',name:'格力高 Pocky 巧克力棒',brand:'亿滋',category:'饼干糕点',subcategory:'棒状饼干',emoji:'🍫',netWeight:'47g',additives:['卵磷脂','碳酸氢钠','柠檬酸','天然香精'],note:'天然香精，配料简洁'},
+      // 膨化食品
+      {id:'P0025',barcode:'6901668001017',name:'乐事薯片 原味',brand:'乐事',category:'膨化食品',subcategory:'薯片',emoji:'🥔',netWeight:'70g',additives:['谷氨酸钠','柠檬酸','维生素C'],note:'配料简洁'},
+      {id:'P0026',barcode:'6901668001024',name:'乐事薯片 番茄味',brand:'乐事',category:'膨化食品',subcategory:'薯片',emoji:'🍅',netWeight:'70g',additives:['谷氨酸钠','柠檬酸','日落黄','诱惑红','维生素C','人工香精'],note:'双人工色素，高风险'},
+      {id:'P0027',barcode:'6901668001031',name:'乐事薯片 黄瓜味',brand:'乐事',category:'膨化食品',subcategory:'薯片',emoji:'🥒',netWeight:'70g',additives:['谷氨酸钠','柠檬酸','维生素C','天然香精'],note:'天然香精，相对安全'},
+      {id:'P0028',barcode:'6901668001048',name:'乐事薯片 辣鸡翅味',brand:'乐事',category:'膨化食品',subcategory:'薯片',emoji:'🍗',netWeight:'70g',additives:['谷氨酸钠','柠檬酸','日落黄','人工香精','二丁基羟基甲苯'],note:'含BHT合成抗氧化剂'},
+      {id:'P0029',barcode:'4800888001010',name:'上好佳 虾条',brand:'上好佳',category:'膨化食品',subcategory:'虾味',emoji:'🦐',netWeight:'55g',additives:['谷氨酸钠','柠檬酸','日落黄','诱惑红','人工香精'],note:'虾过敏宝宝注意'},
+      {id:'P0031',barcode:'4710043001035',name:'旺旺 浪味仙 原味',brand:'旺旺',category:'膨化食品',subcategory:'膨化食品',emoji:'🌊',netWeight:'56g',additives:['谷氨酸钠','柠檬酸','碳酸氢钠'],note:'配料较简单'},
+      {id:'P0033',barcode:'6924716001016',name:'卫龙 辣条 大面筋',brand:'卫龙',category:'膨化食品',subcategory:'辣味食品',emoji:'🌶️',netWeight:'106g',additives:['谷氨酸钠','苯甲酸钠','日落黄','柠檬黄','人工香精','丁基羟基茴香醚'],note:'超高风险：防腐剂+双人工色素'},
+      {id:'P0034',barcode:'6924716001023',name:'卫龙 魔芋爽',brand:'卫龙',category:'膨化食品',subcategory:'辣味食品',emoji:'🟤',netWeight:'108g',additives:['苯甲酸钠','谷氨酸钠','卡拉胶','日落黄','人工香精'],note:'防腐剂+色素'},
+      {id:'P0036',barcode:'6901668001055',name:'乐事 Maxx 厚切薯片',brand:'乐事',category:'膨化食品',subcategory:'薯片',emoji:'🥔',netWeight:'112g',additives:['谷氨酸钠','柠檬酸','维生素C'],note:'配料简洁'},
+      {id:'P0038',barcode:'7622210001043',name:'多力多滋 原味玉米片',brand:'亿滋',category:'膨化食品',subcategory:'玉米片',emoji:'🌽',netWeight:'75g',additives:['谷氨酸钠','柠檬酸','维生素C','天然香精'],note:'天然香精，相对安全'},
+      {id:'P0042',barcode:'6901668001079',name:'乐事薯片 梅子口味',brand:'乐事',category:'膨化食品',subcategory:'薯片',emoji:'🍇',netWeight:'70g',additives:['谷氨酸钠','柠檬酸','维生素C','天然胡萝卜素'],note:'天然色素，安全'},
+      {id:'P0044',barcode:'4800888001041',name:'上好佳 好多鱼 小鱼片',brand:'上好佳',category:'膨化食品',subcategory:'海鲜零食',emoji:'🐟',netWeight:'25g',additives:['谷氨酸钠','柠檬酸','山梨酸钾'],note:'鱼类过敏宝宝禁食'},
+      {id:'P0048',barcode:'6924716001047',name:'卫龙 厚片辣条',brand:'卫龙',category:'膨化食品',subcategory:'辣味食品',emoji:'🌶️',netWeight:'108g',additives:['谷氨酸钠','苯甲酸钠','柠檬黄','日落黄','丁基羟基茴香醚','人工香精'],note:'儿童不建议食用'},
+      // 糖果果冻
+      {id:'P0051',barcode:'6908501001010',name:'大白兔 奶糖 原味',brand:'大白兔',category:'糖果果冻',subcategory:'奶糖',emoji:'🐰',netWeight:'200g',additives:['卵磷脂','柠檬酸'],note:'经典配方，配料简单'},
+      {id:'P0052',barcode:'6908501001027',name:'大白兔 奶糖 草莓味',brand:'大白兔',category:'糖果果冻',subcategory:'奶糖',emoji:'🍓',netWeight:'200g',additives:['卵磷脂','诱惑红','柠檬酸','人工香精'],note:'人工色素+香精'},
+      {id:'P0054',barcode:'4710043001080',name:'旺旺 QQ糖 什锦味',brand:'旺旺',category:'糖果果冻',subcategory:'软糖',emoji:'🍬',netWeight:'70g',additives:['山梨酸钾','柠檬黄','日落黄','诱惑红','人工香精','卡拉胶'],note:'三种人工色素，高风险'},
+      {id:'P0056',barcode:'6902538001012',name:'喜之郎 果肉果冻 草莓味',brand:'喜之郎',category:'糖果果冻',subcategory:'果冻',emoji:'🍓',netWeight:'288g',additives:['山梨酸钾','诱惑红','柠檬酸','卡拉胶','人工香精'],note:'3岁以下有噎食风险'},
+      {id:'P0057',barcode:'6902538001029',name:'喜之郎 果冻 原味',brand:'喜之郎',category:'糖果果冻',subcategory:'果冻',emoji:'🟡',netWeight:'288g',additives:['山梨酸钾','柠檬黄','柠檬酸','卡拉胶'],note:'防腐剂+色素'},
+      {id:'P0058',barcode:'6902538001036',name:'喜之郎 优果C',brand:'喜之郎',category:'糖果果冻',subcategory:'果冻',emoji:'🍊',netWeight:'120g',additives:['山梨酸钾','柠檬酸','维生素C','卡拉胶','天然胡萝卜素'],note:'天然色素，相对安全'},
+      {id:'P0059',barcode:'6907682001011',name:'阿尔卑斯 硬糖 草莓味',brand:'阿尔卑斯',category:'糖果果冻',subcategory:'硬糖',emoji:'🍬',netWeight:'150g',additives:['柠檬酸','诱惑红','人工香精'],note:'人工色素+香精'},
+      {id:'P0060',barcode:'6907682001028',name:'阿尔卑斯 硬糖 原味牛奶',brand:'阿尔卑斯',category:'糖果果冻',subcategory:'硬糖',emoji:'🥛',netWeight:'150g',additives:['柠檬酸','卵磷脂'],note:'配料简洁，低风险'},
+      {id:'P0061',barcode:'6906659001045',name:'雅客维生素糖 综合水果',brand:'嘉士利',category:'糖果果冻',subcategory:'功能糖果',emoji:'💊',netWeight:'100g',additives:['阿斯巴甜','安赛蜜','柠檬黄','诱惑红','柠檬酸','维生素C'],note:'⚠️ PKU禁用！双甜味剂+双色素'},
+      {id:'P0063',barcode:'6921816001013',name:'金丝猴 奶糖 原味',brand:'金丝猴',category:'糖果果冻',subcategory:'奶糖',emoji:'🐵',netWeight:'250g',additives:['卵磷脂','柠檬酸','单甘油脂肪酸酯'],note:'配料简洁，低风险'},
+      {id:'P0066',barcode:'7622210001067',name:'好时 巧克力豆 彩虹',brand:'亿滋',category:'糖果果冻',subcategory:'巧克力糖',emoji:'🌈',netWeight:'40g',additives:['卵磷脂','柠檬黄','日落黄','诱惑红','人工香精'],note:'四种色素！ADHD宝宝高风险'},
+      {id:'P0071',barcode:'6907682001035',name:'阿尔卑斯 无糖糖 薄荷味',brand:'阿尔卑斯',category:'糖果果冻',subcategory:'无糖糖果',emoji:'🌿',netWeight:'50g',additives:['山梨糖醇','阿斯巴甜','安赛蜜'],note:'⚠️ PKU禁用阿斯巴甜'},
+      {id:'P0074',barcode:'7622210001081',name:'好时 黑巧克力豆',brand:'亿滋',category:'糖果果冻',subcategory:'巧克力',emoji:'🍫',netWeight:'40g',additives:['卵磷脂','天然香精'],note:'天然香精，配料简洁'},
+      // 婴幼儿零食
+      {id:'P0076',barcode:'6923644001015',name:'英氏 米饼 蔬菜味',brand:'英氏',category:'婴幼儿零食',subcategory:'宝宝米饼',emoji:'🥬',netWeight:'50g',additives:['碳酸氢钠','柠檬酸','天然胡萝卜素'],note:'婴幼儿专属，低风险'},
+      {id:'P0077',barcode:'6923644001022',name:'英氏 米饼 原味',brand:'英氏',category:'婴幼儿零食',subcategory:'宝宝米饼',emoji:'🌾',netWeight:'50g',additives:['碳酸氢钠','柠檬酸'],note:'配料极简，安全'},
+      {id:'P0078',barcode:'6923644001039',name:'英氏 溶豆 草莓味',brand:'英氏',category:'婴幼儿零食',subcategory:'溶豆',emoji:'🍓',netWeight:'20g',additives:['柠檬酸','天然胡萝卜素','抗坏血酸'],note:'天然成分，安全'},
+      {id:'P0079',barcode:'6923644001046',name:'英氏 牛奶磨牙棒',brand:'英氏',category:'婴幼儿零食',subcategory:'磨牙棒',emoji:'🦷',netWeight:'64g',additives:['碳酸氢钠','柠檬酸','卵磷脂'],note:'低风险'},
+      {id:'P0080',barcode:'0015000001011',name:'嘉宝 有机蔬菜饼干',brand:'嘉宝',category:'婴幼儿零食',subcategory:'宝宝饼干',emoji:'🥦',netWeight:'150g',additives:['碳酸氢钠','柠檬酸','抗坏血酸'],note:'有机认证，低风险'},
+      {id:'P0081',barcode:'0015000001028',name:'嘉宝 水果混合泡芙',brand:'嘉宝',category:'婴幼儿零食',subcategory:'宝宝泡芙',emoji:'🍊',netWeight:'42g',additives:['柠檬酸','天然胡萝卜素','抗坏血酸'],note:'天然成分，安全'},
+      {id:'P0082',barcode:'5000157001010',name:'亨氏 婴儿饼干 原味',brand:'亨氏',category:'婴幼儿零食',subcategory:'宝宝饼干',emoji:'🍪',netWeight:'180g',additives:['碳酸氢钠','柠檬酸','卵磷脂'],note:'低风险'},
+      {id:'P0084',barcode:'6970399001014',name:'禧贝 有机溶溶豆 香蕉味',brand:'禧贝',category:'婴幼儿零食',subcategory:'溶豆',emoji:'🍌',netWeight:'28g',additives:['柠檬酸','抗坏血酸'],note:'有机认证，极低风险'},
+      {id:'P0085',barcode:'6970399001021',name:'禧贝 有机米饼 南瓜味',brand:'禧贝',category:'婴幼儿零食',subcategory:'宝宝米饼',emoji:'🎃',netWeight:'40g',additives:['碳酸氢钠','柠檬酸','天然胡萝卜素'],note:'有机认证，安全'},
+      {id:'P0086',barcode:'6971234001013',name:'宝宝馋了 鳕鱼肠',brand:'宝宝馋了',category:'婴幼儿零食',subcategory:'宝宝肠',emoji:'🐟',netWeight:'72g',additives:['柠檬酸','卡拉胶','抗坏血酸'],note:'鱼类过敏注意'},
+      {id:'P0088',barcode:'6975678001012',name:'秋田满满 五谷饼干',brand:'秋田满满',category:'婴幼儿零食',subcategory:'宝宝饼干',emoji:'🌾',netWeight:'80g',additives:['碳酸氢钠','柠檬酸','卵磷脂'],note:'低风险'},
+      {id:'P0090',barcode:'6969876001011',name:'米小芽 有机糙米卷',brand:'米小芽',category:'婴幼儿零食',subcategory:'宝宝零食',emoji:'🌿',netWeight:'60g',additives:['柠檬酸','抗坏血酸'],note:'有机认证，极低风险'},
+      {id:'P0092',barcode:'6972345001010',name:'小鹿蓝蓝 胡萝卜米饼',brand:'小鹿蓝蓝',category:'婴幼儿零食',subcategory:'宝宝米饼',emoji:'🥕',netWeight:'45g',additives:['碳酸氢钠','柠檬酸','天然胡萝卜素','抗坏血酸'],note:'天然成分，安全'},
+      {id:'P0093',barcode:'6972345001027',name:'小鹿蓝蓝 无添加米糊',brand:'小鹿蓝蓝',category:'婴幼儿零食',subcategory:'米粉',emoji:'🥣',netWeight:'200g',additives:['抗坏血酸'],note:'配料极简，最安全'},
+      {id:'P0094',barcode:'6971111001011',name:'哈哈象 藜麦饼干',brand:'哈哈象',category:'婴幼儿零食',subcategory:'宝宝饼干',emoji:'🐘',netWeight:'60g',additives:['碳酸氢钠','柠檬酸','卵磷脂'],note:'低风险'},
+      {id:'P0095',barcode:'6933211001010',name:'宝宝好 磨牙棒 原味',brand:'宝宝好',category:'婴幼儿零食',subcategory:'磨牙棒',emoji:'🦷',netWeight:'80g',additives:['碳酸氢钠','柠檬酸'],note:'配料极简，安全'},
+      {id:'P0100',barcode:'6971234001037',name:'宝宝馋了 有机红薯条',brand:'宝宝馋了',category:'婴幼儿零食',subcategory:'宝宝零食',emoji:'🍠',netWeight:'50g',additives:['柠檬酸','抗坏血酸'],note:'天然成分，极低风险'},
+    ];
+
+    const CATEGORIES = ['全部', '饼干糕点', '膨化食品', '糖果果冻', '婴幼儿零食'];
+
+    function lookupByBarcode(bc) { return PRODUCTS_DB.find(p => p.barcode === (bc||'').trim()) || null; }
+    function searchProducts(q, cat, lim=50) {
+      const ql = (q||'').toLowerCase();
+      return PRODUCTS_DB.filter(p =>
+        (cat==='全部' || p.category===cat) &&
+        (!ql || p.name.toLowerCase().includes(ql) || p.brand.toLowerCase().includes(ql))
+      ).slice(0, lim);
+    }
+
+    // ══════════════════════════════════════════════
+    //  UI 配置
+    // ══════════════════════════════════════════════
+    const RISK_CONFIG = {
+      high:   { label:'高风险', color:'text-red-600',    bg:'bg-red-50',    border:'border-red-300',   badge:'bg-red-500',   dot:'🔴' },
+      medium: { label:'中风险', color:'text-orange-600', bg:'bg-orange-50', border:'border-orange-300', badge:'bg-orange-400', dot:'🟠' },
+      low:    { label:'低风险', color:'text-yellow-600', bg:'bg-yellow-50', border:'border-yellow-300', badge:'bg-yellow-400', dot:'🟡' },
+      safe:   { label:'安全',   color:'text-teal-600',   bg:'bg-teal-50',   border:'border-teal-300',   badge:'bg-teal-500',  dot:'🟢' },
+    };
+
+    const INITIAL_BABY = { name:'小豆豆', ageMonths:21, conditions:['g6pd'], allergies:['牛奶','鸡蛋'], watchCategories:['甜味剂','人工色素'] };
+    const INITIAL_HISTORY = [
+      { ...lookupByBarcode('6902083001018'), scanDate:'2024-12-10' },
+      { ...lookupByBarcode('6901668001017'), scanDate:'2024-12-08' },
+      { ...lookupByBarcode('6923644001022'), scanDate:'2024-12-05' },
+    ];
+
+    // ══════════════════════════════════════════════
+    //  主应用
+    // ══════════════════════════════════════════════
+    function App() {
+      const [tab, setTab] = useState('scan');
+      const [baby, setBaby] = useState(INITIAL_BABY);
+      const [history, setHistory] = useState(INITIAL_HISTORY);
+      const [product, setProduct] = useState(null);
+      const [showModal, setShowModal] = useState(false);
+      const [barcodeInput, setBarcodeInput] = useState('');
+      const [barcodeErr, setBarcodeErr] = useState('');
+      const [scanCat, setScanCat] = useState('全部');
+      const [searchQ, setSearchQ] = useState('');
+      const [searchCat, setSearchCat] = useState('全部');
+      const [histFilter, setHistFilter] = useState('全部');
+      const [editBaby, setEditBaby] = useState(false);
+      const [newAllergy, setNewAllergy] = useState('');
+
+      const selectProduct = (p) => {
+        setProduct(p);
+        setShowModal(false);
+        setBarcodeInput(''); setBarcodeErr('');
+        setHistory(prev => [{ ...p, scanDate: new Date().toISOString().slice(0,10) }, ...prev.filter(h=>h.id!==p.id)].slice(0,20));
+      };
+
+      const lookupBarcode = () => {
+        if (!barcodeInput.trim()) { setBarcodeErr('请输入条码'); return; }
+        const found = lookupByBarcode(barcodeInput);
+        if (found) selectProduct(found);
+        else setBarcodeErr('未找到该产品，请尝试搜索品名');
+      };
+
+      const searchResults = useMemo(() => searchProducts(searchQ, searchCat, 60), [searchQ, searchCat]);
+
+      const histItems = useMemo(() => history.filter(item => {
+        if (histFilter === '全部') return true;
+        const a = assessProduct(item.additives, baby.conditions);
+        if (histFilter === '高风险') return a.maxRisk === 'high';
+        if (histFilter === '中风险') return a.maxRisk === 'medium';
+        if (histFilter === '安全') return a.maxRisk === 'safe' || a.maxRisk === 'low';
+        return true;
+      }), [history, histFilter, baby.conditions]);
+
+      const assess = product ? assessProduct(product.additives, baby.conditions) : null;
+
+      const RiskBadge = ({ level }) => (
+        <span className={`px-2 py-0.5 rounded-full text-white text-xs font-bold ${RISK_CONFIG[level].badge}`}>
+          {RISK_CONFIG[level].label}
+        </span>
+      );
+
+      return (
+        <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+          {/* 手机外壳 */}
+          <div className="w-[390px] h-[844px] bg-white rounded-[44px] shadow-2xl border-[8px] border-gray-800 overflow-hidden flex flex-col relative">
+
+            {/* 顶部状态栏 */}
+            <div className="bg-teal-600 text-white text-xs flex justify-between px-6 pt-2 pb-1 flex-shrink-0">
+              <span className="font-medium">9:41</span>
+              <span>●●●</span>
+            </div>
+
+            {/* 内容区域 */}
+            <div className="flex-1 overflow-hidden flex flex-col">
+
+              {/* ── 产品详情页 ── */}
+              {product ? (
+                <div className="flex flex-col h-full">
+                  <div className="bg-teal-600 text-white px-4 py-3 flex items-center gap-3 flex-shrink-0">
+                    <button onClick={() => setProduct(null)} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30">
+                      <span className="text-lg">←</span>
+                    </button>
+                    <span className="font-bold">产品详情</span>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                    {/* 产品卡 */}
+                    <div className={`border-2 rounded-2xl p-4 ${RISK_CONFIG[assess.maxRisk].border} ${RISK_CONFIG[assess.maxRisk].bg}`}>
+                      <div className="flex items-start gap-3">
+                        <span className="text-5xl">{product.emoji}</span>
+                        <div className="flex-1">
+                          <div className="font-bold text-gray-900">{product.name}</div>
+                          <div className="text-sm text-gray-500">{product.brand} · {product.subcategory} · {product.netWeight}</div>
+                          <div className="mt-2"><RiskBadge level={assess.maxRisk} /></div>
+                        </div>
+                      </div>
+                      <div className="flex gap-4 mt-3 pt-3 border-t border-gray-200 text-center">
+                        {['high','medium','low','safe'].map(r => (
+                          <div key={r} className="flex-1">
+                            <div className={`text-xl font-black ${RISK_CONFIG[r].color}`}>{assess.riskCounts[r].length}</div>
+                            <div className="text-xs text-gray-500">{RISK_CONFIG[r].label.replace('风险','')}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 个性化预警 */}
+                    {assess.hasPersonalWarnings && (
+                      <div className="bg-amber-50 border-l-4 border-amber-400 rounded-r-2xl p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <AlertCircle size={16} className="text-amber-600" />
+                          <span className="font-bold text-amber-800 text-sm">⚡ {baby.name} 的个性化预警</span>
+                        </div>
+                        {assess.personalWarnings.map((w,i) => (
+                          <div key={i} className="text-sm text-amber-900 flex items-center gap-1 mt-1">
+                            <span>{RISK_CONFIG[w.risk].dot}</span>
+                            <span className="font-medium">{w.additive}</span>
+                            <span className="text-amber-600">· {w.category}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* 高风险 */}
+                    {assess.riskCounts.high.length > 0 && (
+                      <div>
+                        <div className="text-sm font-bold text-red-600 mb-2">🔴 高风险添加剂</div>
+                        {assess.riskCounts.high.map(a => (
+                          <div key={a} className="text-sm bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-1">{a}</div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* 中风险 */}
+                    {assess.riskCounts.medium.length > 0 && (
+                      <details>
+                        <summary className="text-sm font-bold text-orange-600 cursor-pointer mb-2">🟠 中风险添加剂 ({assess.riskCounts.medium.length})</summary>
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {assess.riskCounts.medium.map(a => (
+                            <span key={a} className="text-xs bg-orange-50 border border-orange-200 px-2 py-1 rounded-full">{a}</span>
+                          ))}
+                        </div>
+                      </details>
+                    )}
+
+                    {/* 低风险+安全 */}
+                    {(assess.riskCounts.low.length > 0 || assess.riskCounts.safe.length > 0) && (
+                      <details>
+                        <summary className="text-sm font-bold text-teal-600 cursor-pointer">🟢 低风险/安全成分 ({assess.riskCounts.low.length + assess.riskCounts.safe.length})</summary>
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {[...assess.riskCounts.low, ...assess.riskCounts.safe].map(a => (
+                            <span key={a} className="text-xs bg-teal-50 border border-teal-200 px-2 py-1 rounded-full">{a}</span>
+                          ))}
+                        </div>
+                      </details>
+                    )}
+
+                    {product.note && (
+                      <div className="text-sm p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                        <span className="font-bold">💡 </span>{product.note}
+                      </div>
+                    )}
+
+                    <button onClick={() => setProduct(null)}
+                      className="w-full bg-teal-600 hover:bg-teal-700 text-white py-3 rounded-2xl font-bold text-sm">
+                      ← 换一个产品
+                    </button>
+                  </div>
+                </div>
+
+              ) : tab === 'scan' ? (
+                /* ── 扫一扫首页 ── */
+                <div className="flex flex-col h-full">
+                  <div className="bg-gradient-to-b from-teal-600 to-teal-500 px-4 pt-3 pb-5 flex-shrink-0">
+                    <div className="flex items-center justify-between text-white mb-3">
+                      <div>
+                        <div className="font-black text-xl">🛡️ 宝妈卫士</div>
+                        <div className="text-teal-100 text-xs">守护 {baby.name} · {baby.ageMonths}个月</div>
+                      </div>
+                      <Shield size={24} className="text-white/80" />
+                    </div>
+                    <div className="flex items-center bg-white/20 rounded-xl px-3 py-2">
+                      <Search size={14} className="text-white/60 mr-2" />
+                      <span className="text-white/50 text-sm">搜索产品名称…</span>
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-4">
+                    <button onClick={() => setShowModal(true)}
+                      className="w-full bg-gradient-to-br from-teal-500 to-teal-700 rounded-3xl p-6 flex flex-col items-center gap-3 shadow-lg mb-4 hover:shadow-xl transition">
+                      <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center">
+                        <Camera size={36} className="text-white" />
+                      </div>
+                      <div className="text-white text-center">
+                        <div className="font-bold text-lg">扫一扫</div>
+                        <div className="text-teal-100 text-xs">查零食添加剂风险</div>
+                      </div>
+                    </button>
+
+                    {/* 宝宝档案摘要 */}
+                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-4">
+                      <div className="text-xs font-bold text-amber-800 mb-2">⚡ {baby.name} 的个性化关注</div>
+                      <div className="flex flex-wrap gap-1">
+                        {baby.conditions.map(c => (
+                          <span key={c} className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                            {CONDITIONS_MAP[c]?.icon} {CONDITIONS_MAP[c]?.label}
+                          </span>
+                        ))}
+                        {baby.allergies.map(a => (
+                          <span key={a} className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">{a}过敏</span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 最近扫描 */}
+                    <div className="text-sm font-bold text-gray-700 mb-2">最近扫描</div>
+                    {history.slice(0,3).map((item,i) => {
+                      const a = assessProduct(item.additives, baby.conditions);
+                      return (
+                        <button key={i} onClick={() => setProduct(item)}
+                          className={`w-full flex items-center gap-3 bg-white rounded-xl border-2 ${RISK_CONFIG[a.maxRisk].border} p-3 mb-2 text-left shadow-sm hover:shadow transition`}>
+                          <span className="text-2xl">{item.emoji}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-gray-800 truncate">{item.name}</div>
+                            <div className="text-xs text-gray-400">{item.scanDate}</div>
+                            {a.hasPersonalWarnings && <div className="text-xs text-amber-600">⚡ 个性化预警</div>}
+                          </div>
+                          <RiskBadge level={a.maxRisk} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+              ) : tab === 'search' ? (
+                /* ── 搜索页 ── */
+                <div className="flex flex-col h-full">
+                  <div className="bg-white px-4 pt-3 pb-2 border-b border-gray-100 flex-shrink-0">
+                    <div className="font-bold text-gray-800 mb-2">搜索产品</div>
+                    <div className="flex items-center bg-gray-100 rounded-xl px-3 py-2 mb-2">
+                      <Search size={14} className="text-gray-400 mr-2" />
+                      <input className="flex-1 bg-transparent text-sm outline-none placeholder-gray-400"
+                        placeholder="搜索品牌或产品名"
+                        value={searchQ}
+                        onChange={e => setSearchQ(e.target.value)} />
+                    </div>
+                    <div className="flex gap-2 overflow-x-auto pb-1">
+                      {CATEGORIES.map(cat => (
+                        <button key={cat} onClick={() => setSearchCat(cat)}
+                          className={`flex-shrink-0 text-xs px-3 py-1.5 rounded-full font-medium transition ${
+                            searchCat === cat ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-600'
+                          }`}>{cat}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      {searchResults.map(p => {
+                        const a = assessProduct(p.additives, baby.conditions);
+                        return (
+                          <button key={p.id} onClick={() => setProduct(p)}
+                            className={`p-3 rounded-2xl border-2 ${RISK_CONFIG[a.maxRisk].border} ${RISK_CONFIG[a.maxRisk].bg} text-left hover:shadow transition`}>
+                            <div className="text-3xl mb-1">{p.emoji}</div>
+                            <div className="text-xs font-bold text-gray-800 line-clamp-2">{p.name}</div>
+                            <div className="text-xs text-gray-500 mt-0.5">{p.brand}</div>
+                            <div className="mt-1.5"><RiskBadge level={a.maxRisk} /></div>
+                            {a.hasPersonalWarnings && <div className="text-xs text-amber-600 mt-0.5">⚡个性化</div>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+              ) : tab === 'history' ? (
+                /* ── 记录页 ── */
+                <div className="flex flex-col h-full">
+                  <div className="bg-white px-4 py-3 border-b border-gray-100 flex-shrink-0">
+                    <div className="font-bold text-gray-800 mb-2">扫描记录</div>
+                    <div className="flex gap-2">
+                      {['全部','高风险','中风险','安全'].map(f => (
+                        <button key={f} onClick={() => setHistFilter(f)}
+                          className={`flex-1 text-xs py-1.5 rounded-full font-medium transition ${
+                            histFilter === f ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-600'
+                          }`}>{f}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                    {histItems.length === 0
+                      ? <div className="text-center text-gray-400 text-sm mt-12">暂无记录</div>
+                      : histItems.map((item,i) => {
+                          const a = assessProduct(item.additives, baby.conditions);
+                          return (
+                            <button key={i} onClick={() => setProduct(item)}
+                              className={`w-full flex items-center gap-3 bg-white rounded-2xl border-2 ${RISK_CONFIG[a.maxRisk].border} p-3 text-left shadow-sm hover:shadow transition`}>
+                              <span className="text-2xl">{item.emoji}</span>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium text-gray-800 truncate">{item.name}</div>
+                                <div className="text-xs text-gray-400">{item.scanDate}</div>
+                                {a.hasPersonalWarnings && <div className="text-xs text-amber-600">⚡ 有个性化预警</div>}
+                              </div>
+                              <RiskBadge level={a.maxRisk} />
+                            </button>
+                          );
+                        })
+                    }
+                  </div>
+                </div>
+
+              ) : (
+                /* ── 宝宝档案页 ── */
+                <div className="flex flex-col h-full">
+                  <div className="bg-gradient-to-br from-teal-500 to-teal-700 px-4 py-6 text-white flex-shrink-0">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-3xl">👶</div>
+                        <div>
+                          {editBaby
+                            ? <input className="text-xl font-bold bg-white/20 rounded-lg px-2 py-1 text-white w-28"
+                                value={baby.name} onChange={e => setBaby({...baby, name: e.target.value})} />
+                            : <div className="text-xl font-bold">{baby.name}</div>
+                          }
+                          <div className="text-teal-100 text-sm">{baby.ageMonths}个月 · {baby.conditions.length}项关注</div>
+                        </div>
+                      </div>
+                      <button onClick={() => setEditBaby(!editBaby)}
+                        className={`px-3 py-1.5 rounded-xl text-sm font-bold ${editBaby ? 'bg-white text-teal-700' : 'bg-white/20 text-white'}`}>
+                        {editBaby ? '💾 保存' : '✏️ 编辑'}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    {/* 疾病档案 */}
+                    <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                      <div className="text-sm font-bold text-gray-700 mb-3">🏥 疾病档案</div>
+                      <div className="flex flex-wrap gap-2">
+                        {Object.entries(CONDITIONS_MAP).map(([id, {label, icon}]) => {
+                          const selected = baby.conditions.includes(id);
+                          return (
+                            <button key={id}
+                              onClick={() => editBaby && setBaby({...baby, conditions: selected ? baby.conditions.filter(c=>c!==id) : [...baby.conditions, id]})}
+                              className={`text-xs px-3 py-1.5 rounded-full border font-medium transition ${
+                                selected ? 'bg-red-500 text-white border-red-500' : 'bg-gray-50 text-gray-600 border-gray-200'
+                              } ${editBaby ? 'cursor-pointer' : 'cursor-default'}`}>
+                              {icon} {label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {editBaby && <div className="text-xs text-gray-400 mt-2">点击选中/取消宝宝的疾病情况</div>}
+                    </div>
+
+                    {/* 过敏史 */}
+                    <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                      <div className="text-sm font-bold text-gray-700 mb-3">🌸 过敏史</div>
+                      <div className="flex flex-wrap gap-2">
+                        {baby.allergies.map((a,i) => (
+                          <span key={i} className="inline-flex items-center gap-1 text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full">
+                            {a}过敏
+                            {editBaby && <button onClick={() => setBaby({...baby, allergies: baby.allergies.filter((_,j)=>j!==i)})} className="ml-0.5">×</button>}
+                          </span>
+                        ))}
+                        {editBaby && (
+                          <div className="flex gap-1">
+                            <input className="text-xs border border-gray-200 rounded-full px-2 py-1 w-20"
+                              placeholder="添加…"
+                              value={newAllergy}
+                              onChange={e => setNewAllergy(e.target.value)}
+                              onKeyDown={e => { if(e.key==='Enter'&&newAllergy.trim()){ setBaby({...baby, allergies:[...baby.allergies, newAllergy.trim()]}); setNewAllergy(''); }}} />
+                            <button className="text-xs text-white bg-orange-400 rounded-full px-2 py-1"
+                              onClick={() => { if(newAllergy.trim()){ setBaby({...baby, allergies:[...baby.allergies, newAllergy.trim()]}); setNewAllergy(''); }}}>+</button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 说明卡 */}
+                    <div className="bg-teal-50 rounded-2xl p-4 border border-teal-100">
+                      <div className="text-xs font-bold text-teal-700 mb-1">🧠 匹配引擎说明</div>
+                      <div className="text-xs text-teal-600 leading-relaxed">
+                        每次扫码后，引擎会将产品添加剂与宝宝的疾病史、过敏史进行交叉匹配，
+                        自动生成个性化风险预警，并标注具体触发原因。
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── 底部导航 ── */}
+            {!product && (
+              <div className="bg-white border-t border-gray-100 flex flex-shrink-0 pb-1">
+                {[
+                  { key:'scan',    label:'扫一扫', Icon:Camera },
+                  { key:'search',  label:'搜索',   Icon:Search },
+                  { key:'history', label:'记录',   Icon:History },
+                  { key:'baby',    label:'宝宝',   Icon:Baby },
+                ].map(({key, label, Icon}) => (
+                  <button key={key} onClick={() => setTab(key)}
+                    className={`flex-1 flex flex-col items-center py-2 gap-0.5 transition ${
+                      tab === key ? 'text-teal-600' : 'text-gray-400 hover:text-gray-600'
+                    }`}>
+                    <Icon size={22} />
+                    <span className="text-xs">{label}</span>
+                    {tab === key && <div className="w-5 h-0.5 bg-teal-600 rounded-full" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ── 扫码弹层 ── */}
+          {showModal && (
+            <div className="fixed inset-0 bg-black/60 flex items-end justify-center z-50">
+              <div className="w-[390px] bg-white rounded-t-3xl p-4 pb-8 max-h-[85vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="font-bold text-gray-800 text-lg">选择产品</div>
+                  <button onClick={() => { setShowModal(false); setBarcodeInput(''); setBarcodeErr(''); }}
+                    className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100">
+                    <X size={16} />
+                  </button>
+                </div>
+
+                {/* 条码输入 */}
+                <div className="mb-4">
+                  <label className="text-sm font-medium text-gray-600 mb-1 block">输入条码查询</label>
+                  <div className="flex gap-2">
+                    <input className="flex-1 border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-teal-500 outline-none"
+                      placeholder="如：6902083001018"
+                      value={barcodeInput}
+                      onChange={e => { setBarcodeInput(e.target.value); setBarcodeErr(''); }}
+                      onKeyDown={e => e.key==='Enter' && lookupBarcode()} />
+                    <button onClick={lookupBarcode}
+                      className="px-4 py-2 bg-teal-600 text-white rounded-xl text-sm font-bold hover:bg-teal-700">查询</button>
+                  </div>
+                  {barcodeErr && <p className="text-red-500 text-xs mt-1">{barcodeErr}</p>}
+                </div>
+
+                {/* 品类筛选 */}
+                <div className="mb-3">
+                  <label className="text-sm font-medium text-gray-600 mb-2 block">或按品类选择</label>
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {CATEGORIES.map(c => (
+                      <button key={c} onClick={() => setScanCat(c)}
+                        className={`flex-shrink-0 text-xs px-3 py-1.5 rounded-full font-medium transition ${
+                          scanCat === c ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-600'
+                        }`}>{c}</button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 产品列表 */}
+                <div className="space-y-2">
+                  {searchProducts('', scanCat, 80).map(p => {
+                    const a = assessProduct(p.additives, baby.conditions);
+                    return (
+                      <button key={p.id} onClick={() => selectProduct(p)}
+                        className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 text-left transition">
+                        <span className="text-2xl">{p.emoji}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-gray-800">{p.name}</div>
+                          <div className="text-xs text-gray-400">{p.brand} · {p.additives.length}种添加剂</div>
+                          {a.hasPersonalWarnings && <div className="text-xs text-amber-600">⚡ 有个性化预警</div>}
+                        </div>
+                        <RiskBadge level={a.maxRisk} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
