@@ -42,30 +42,134 @@
     //  匹配引擎
     // ══════════════════════════════════════════════
     const ADDITIVES_DB = [
-      { name: '山梨酸钾', risk: 'medium', category: '防腐剂', effects: { g6pd: false, pku: false, asthma: true, eczema: false, adhd: false, lactose: false, ibs: false, kidney: false, liver: false } },
-      { name: '柠檬黄', risk: 'high', category: '人工色素', effects: { g6pd: false, pku: false, asthma: true, eczema: false, adhd: true, lactose: false, ibs: false, kidney: false, liver: false } },
-      { name: '诱惑红', risk: 'high', category: '人工色素', effects: { g6pd: false, pku: false, asthma: false, eczema: false, adhd: true, lactose: false, ibs: false, kidney: false, liver: false } },
-      { name: '日落黄', risk: 'high', category: '人工色素', effects: { g6pd: false, pku: false, asthma: true, eczema: false, adhd: true, lactose: false, ibs: false, kidney: false, liver: false } },
-      { name: '单甘油脂肪酸酯', risk: 'low', category: '乳化剂', effects: {} },
-      { name: '卵磷脂', risk: 'low', category: '乳化剂', effects: {} },
-      { name: '柠檬酸', risk: 'safe', category: '酸味剂', effects: {} },
-      { name: '人工香精', risk: 'medium', category: '香精', effects: { g6pd: false, pku: false, asthma: true, eczema: true, adhd: false, lactose: false, ibs: false, kidney: false, liver: false } },
-      { name: '天然香精', risk: 'low', category: '香精', effects: {} },
-      { name: '食用香精', risk: 'medium', category: '香精', effects: { asthma: true } },
-      { name: '碳酸氢钠', risk: 'safe', category: '膨发剂', effects: {} },
-      { name: '苯甲酸钠', risk: 'high', category: '防腐剂', effects: { g6pd: false, pku: false, asthma: true, eczema: true, adhd: true, lactose: false, ibs: false, kidney: false, liver: false } },
-      { name: '黄原胶', risk: 'low', category: '增稠剂', effects: { ibs: true } },
-      { name: '维生素C', risk: 'safe', category: '抗氧化剂', effects: {} },
-      { name: '抗坏血酸', risk: 'safe', category: '抗氧化剂', effects: {} },
-      { name: '天然胡萝卜素', risk: 'safe', category: '天然色素', effects: {} },
-      { name: '谷氨酸钠', risk: 'medium', category: '增味剂', effects: { adhd: true, kidney: true } },
-      { name: '二丁基羟基甲苯', risk: 'high', category: '合成抗氧化剂', effects: { asthma: true, eczema: true, liver: true } },
-      { name: '丁基羟基茴香醚', risk: 'high', category: '合成抗氧化剂', effects: { asthma: true, eczema: true, liver: true } },
-      { name: '卡拉胶', risk: 'medium', category: '增稠剂', effects: { ibs: true } },
-      { name: '安赛蜜', risk: 'medium', category: '人工甜味剂', effects: { kidney: true } },
-      { name: '三氯蔗糖', risk: 'medium', category: '人工甜味剂', effects: { ibs: true } },
-      { name: '阿斯巴甜', risk: 'high', category: '人工甜味剂', effects: { pku: true } },
-      { name: '山梨糖醇', risk: 'low', category: '糖醇', effects: { ibs: true } },
+      { name: "苯甲酸", aliases: ["安息香酸", "E210"], risk: "high", category: "防腐剂", bannedInfantFood: true, effects: { asthma: true, eczema: true, adhd: true, kidney: true }, note: "GB2760明确禁用于婴幼儿食品" },
+      { name: "苯甲酸钠", aliases: ["安息香酸钠", "E211"], risk: "high", category: "防腐剂", bannedInfantFood: true, effects: { asthma: true, eczema: true, adhd: true, kidney: true }, note: "最常见高风险防腐剂，禁用于婴幼儿食品" },
+      { name: "苯甲酸钾", aliases: ["E212"], risk: "high", category: "防腐剂", bannedInfantFood: true, effects: { asthma: true, adhd: true } },
+      { name: "山梨酸", aliases: ["E200"], risk: "medium", category: "防腐剂", bannedInfantFood: false, effects: { asthma: true }, note: "相对温和，但婴幼儿食品仍需注意剂量" },
+      { name: "山梨酸钾", aliases: ["E202"], risk: "medium", category: "防腐剂", bannedInfantFood: false, effects: { asthma: true }, note: "婴幼儿食品限量使用" },
+      { name: "山梨酸钙", aliases: ["E203"], risk: "medium", category: "防腐剂", bannedInfantFood: false, effects: { asthma: true } },
+      { name: "丙酸", aliases: ["E280"], risk: "low", category: "防腐剂", bannedInfantFood: false, effects: {} },
+      { name: "丙酸钙", aliases: ["E282"], risk: "low", category: "防腐剂", bannedInfantFood: false, effects: {} },
+      { name: "丙酸钠", aliases: ["E281"], risk: "low", category: "防腐剂", bannedInfantFood: false, effects: {} },
+      { name: "亚硝酸钠", aliases: ["E250"], risk: "high", category: "防腐剂", bannedInfantFood: true, effects: { infant: true }, note: "肉制品防腐发色，与胺类反应生成亚硝胺，儿童严格限量" },
+      { name: "亚硝酸钾", aliases: ["E249"], risk: "high", category: "防腐剂", bannedInfantFood: true, effects: { infant: true } },
+      { name: "硝酸钠", aliases: ["E251"], risk: "high", category: "防腐剂", bannedInfantFood: true, effects: { infant: true } },
+      { name: "硝酸钾", aliases: ["E252"], risk: "high", category: "防腐剂", bannedInfantFood: true, effects: { infant: true } },
+      { name: "脱氢乙酸", aliases: ["脱氢醋酸", "E265"], risk: "medium", category: "防腐剂", bannedInfantFood: true, effects: {} },
+      { name: "脱氢乙酸钠", aliases: ["E266"], risk: "medium", category: "防腐剂", bannedInfantFood: true, effects: {}, note: "常见于面包糕点，婴幼儿食品禁用" },
+      { name: "乳酸链球菌素", aliases: ["Nisin", "乳酸素"], risk: "low", category: "防腐剂", bannedInfantFood: false, effects: {}, note: "天然抗菌肽，相对安全" },
+      { name: "纳他霉素", aliases: ["那他霉素", "Natamycin"], risk: "low", category: "防腐剂", bannedInfantFood: false, effects: {} },
+      { name: "二氧化硫", aliases: ["E220", "SO2"], risk: "high", category: "防腐剂/漂白剂", bannedInfantFood: true, effects: { asthma: true }, note: "哮喘儿童严格禁忌，可诱发急性发作" },
+      { name: "亚硫酸钠", aliases: ["E221"], risk: "high", category: "防腐剂/漂白剂", bannedInfantFood: true, effects: { asthma: true } },
+      { name: "焦亚硫酸钠", aliases: ["E223", "偏重亚硫酸钠"], risk: "high", category: "防腐剂/漂白剂", bannedInfantFood: true, effects: { asthma: true } },
+      { name: "焦亚硫酸钾", aliases: ["E224"], risk: "high", category: "防腐剂/漂白剂", bannedInfantFood: true, effects: { asthma: true } },
+      { name: "丁基羟基茴香醚", aliases: ["BHA", "E320", "叔丁基-4-羟基茴香醚"], risk: "high", category: "合成抗氧化剂", bannedInfantFood: true, effects: { asthma: true, eczema: true, liver: true }, note: "IARC 2B类可疑致癌物，婴幼儿食品禁用" },
+      { name: "二丁基羟基甲苯", aliases: ["BHT", "E321"], risk: "high", category: "合成抗氧化剂", bannedInfantFood: true, effects: { asthma: true, eczema: true, liver: true }, note: "可能影响激素，婴幼儿食品禁用" },
+      { name: "没食子酸丙酯", aliases: ["PG", "E310"], risk: "medium", category: "合成抗氧化剂", bannedInfantFood: true, effects: { g6pd: true }, note: "G6PD宝宝禁忌" },
+      { name: "没食子酸辛酯", aliases: ["E311"], risk: "medium", category: "合成抗氧化剂", bannedInfantFood: true, effects: { g6pd: true } },
+      { name: "没食子酸十二酯", aliases: ["E312"], risk: "medium", category: "合成抗氧化剂", bannedInfantFood: true, effects: { g6pd: true } },
+      { name: "特丁基对苯二酚", aliases: ["TBHQ", "E319"], risk: "medium", category: "合成抗氧化剂", bannedInfantFood: false, effects: {}, note: "常见于油炸食品，婴幼儿限量" },
+      { name: "抗坏血酸", aliases: ["维生素C", "Vitamin C", "E300"], risk: "safe", category: "抗氧化剂", bannedInfantFood: false, effects: {} },
+      { name: "抗坏血酸钠", aliases: ["E301"], risk: "safe", category: "抗氧化剂", bannedInfantFood: false, effects: {} },
+      { name: "抗坏血酸钙", aliases: ["E302"], risk: "safe", category: "抗氧化剂", bannedInfantFood: false, effects: {} },
+      { name: "维生素E", aliases: ["生育酚", "E306", "dl-α-生育酚"], risk: "safe", category: "抗氧化剂", bannedInfantFood: false, effects: {} },
+      { name: "迷迭香提取物", aliases: ["迷迭香抗氧化剂"], risk: "safe", category: "天然抗氧化剂", bannedInfantFood: false, effects: {} },
+      { name: "柠檬黄", aliases: ["酒石黄", "E102", "FD&C Yellow 5", "Tartrazine"], risk: "high", category: "人工色素", bannedInfantFood: true, effects: { asthma: true, adhd: true, eczema: true }, note: "欧盟要求强制标注警告：'可能对儿童活动和注意力产生不良影响'" },
+      { name: "日落黄", aliases: ["E110", "FD&C Yellow 6", "Sunset Yellow"], risk: "high", category: "人工色素", bannedInfantFood: true, effects: { asthma: true, adhd: true }, note: "同柠檬黄，欧盟警告标注" },
+      { name: "诱惑红", aliases: ["E129", "Allura Red", "食用红色40号"], risk: "high", category: "人工色素", bannedInfantFood: true, effects: { adhd: true, asthma: true } },
+      { name: "胭脂红", aliases: ["E120", "Cochineal", "胭脂虫红", "苋菜红A"], risk: "high", category: "人工色素", bannedInfantFood: true, effects: { asthma: true, adhd: true } },
+      { name: "苋菜红", aliases: ["E123", "Amaranth", "食用红色2号"], risk: "high", category: "人工色素", bannedInfantFood: true, effects: { asthma: true } },
+      { name: "赤藓红", aliases: ["E127", "Erythrosine", "食用红色3号"], risk: "high", category: "人工色素", bannedInfantFood: true, effects: { adhd: true, kidney: true }, note: "IARC评估，欧盟限制" },
+      { name: "亮蓝", aliases: ["E133", "Brilliant Blue", "食用蓝色1号"], risk: "high", category: "人工色素", bannedInfantFood: true, effects: { asthma: true, adhd: true } },
+      { name: "靛蓝", aliases: ["E132", "Indigo Carmine", "食用蓝色2号"], risk: "medium", category: "人工色素", bannedInfantFood: true, effects: { asthma: true } },
+      { name: "新红", aliases: ["E129类似"], risk: "high", category: "人工色素", bannedInfantFood: true, effects: { asthma: true, adhd: true } },
+      { name: "酸性红", aliases: ["E129"], risk: "high", category: "人工色素", bannedInfantFood: true, effects: { asthma: true } },
+      { name: "喹啉黄", aliases: ["E104", "Quinoline Yellow"], risk: "high", category: "人工色素", bannedInfantFood: true, effects: { adhd: true }, note: "欧盟要求ADHD警告标注" },
+      { name: "天然胡萝卜素", aliases: ["β-胡萝卜素", "E160a", "Beta-carotene"], risk: "safe", category: "天然色素", bannedInfantFood: false, effects: {} },
+      { name: "叶绿素铜钠盐", aliases: ["E141"], risk: "low", category: "天然色素", bannedInfantFood: false, effects: {} },
+      { name: "焦糖色", aliases: ["E150", "caramel color", "焦糖色素"], risk: "medium", category: "天然色素", bannedInfantFood: false, effects: { adhd: true }, note: "4-甲基咪唑含量需关注，部分品类有争议" },
+      { name: "姜黄素", aliases: ["E100", "Curcumin", "郁金色素"], risk: "safe", category: "天然色素", bannedInfantFood: false, effects: {} },
+      { name: "辣椒红", aliases: ["E160c", "辣椒素色素"], risk: "low", category: "天然色素", bannedInfantFood: false, effects: {} },
+      { name: "甜菜红", aliases: ["E162", "甜菜根红"], risk: "safe", category: "天然色素", bannedInfantFood: false, effects: {} },
+      { name: "花青素", aliases: ["E163", "花色素苷"], risk: "safe", category: "天然色素", bannedInfantFood: false, effects: {} },
+      { name: "红曲红", aliases: ["红曲色素"], risk: "low", category: "天然色素", bannedInfantFood: false, effects: {} },
+      { name: "高粱红", aliases: [], risk: "safe", category: "天然色素", bannedInfantFood: false, effects: {} },
+      { name: "栀子黄", aliases: [], risk: "safe", category: "天然色素", bannedInfantFood: false, effects: {} },
+      { name: "阿斯巴甜", aliases: ["E951", "APM", "NutraSweet", "aspartame"], risk: "high", category: "人工甜味剂", bannedInfantFood: true, effects: { pku: true }, note: "PKU（苯丙酮尿症）患者绝对禁忌，必须强制标注" },
+      { name: "安赛蜜", aliases: ["E950", "AK糖", "乙酰磺胺酸钾", "Acesulfame K"], risk: "medium", category: "人工甜味剂", bannedInfantFood: true, effects: { kidney: true }, note: "婴幼儿食品禁用" },
+      { name: "三氯蔗糖", aliases: ["E955", "蔗糖素", "Sucralose"], risk: "medium", category: "人工甜味剂", bannedInfantFood: true, effects: { ibs: true }, note: "可能影响肠道菌群，婴幼儿谨慎" },
+      { name: "糖精", aliases: ["E954", "邻苯甲酰磺酰亚胺"], risk: "high", category: "人工甜味剂", bannedInfantFood: true, effects: { kidney: true }, note: "婴幼儿食品禁用，部分国家限制" },
+      { name: "糖精钠", aliases: ["E954", "可溶性糖精"], risk: "high", category: "人工甜味剂", bannedInfantFood: true, effects: { kidney: true } },
+      { name: "甜蜜素", aliases: ["E952", "环己氨基磺酸钠", "Cyclamate"], risk: "medium", category: "人工甜味剂", bannedInfantFood: true, effects: {}, note: "美国FDA已禁用，中国允许但有剂量限制" },
+      { name: "纽甜", aliases: ["E961", "Neotame"], risk: "medium", category: "人工甜味剂", bannedInfantFood: true, effects: { pku: true }, note: "含苯丙氨酸，PKU患者需注意" },
+      { name: "甜菊糖苷", aliases: ["甜菊糖", "E960", "Steviol glycosides"], risk: "low", category: "天然甜味剂", bannedInfantFood: false, effects: {}, note: "天然来源，婴幼儿食品少量可用" },
+      { name: "赤藓糖醇", aliases: ["E968", "Erythritol"], risk: "low", category: "糖醇", bannedInfantFood: false, effects: { ibs: true } },
+      { name: "山梨糖醇", aliases: ["E420", "Sorbitol"], risk: "low", category: "糖醇", bannedInfantFood: false, effects: { ibs: true }, note: "大量摄入可引起腹泻" },
+      { name: "木糖醇", aliases: ["E967", "Xylitol"], risk: "low", category: "糖醇", bannedInfantFood: false, effects: { ibs: true } },
+      { name: "麦芽糖醇", aliases: ["E965", "Maltitol"], risk: "low", category: "糖醇", bannedInfantFood: false, effects: { ibs: true } },
+      { name: "乳糖醇", aliases: ["E966", "Lactitol"], risk: "low", category: "糖醇", bannedInfantFood: false, effects: { ibs: true, lactose: true } },
+      { name: "谷氨酸钠", aliases: ["MSG", "味精", "E621", "L-谷氨酸单钠"], risk: "medium", category: "增味剂", bannedInfantFood: true, effects: { adhd: true, kidney: true }, note: "婴幼儿食品禁用；大量摄入与肾脏负担有关" },
+      { name: "谷氨酸钾", aliases: ["E622"], risk: "medium", category: "增味剂", bannedInfantFood: true, effects: { kidney: true } },
+      { name: "5'-鸟苷酸二钠", aliases: ["E627", "GMP", "disodium guanylate"], risk: "medium", category: "增味剂", bannedInfantFood: true, effects: { kidney: true }, note: "常与MSG合用增强鲜味" },
+      { name: "5'-肌苷酸二钠", aliases: ["E631", "IMP", "disodium inosinate"], risk: "medium", category: "增味剂", bannedInfantFood: true, effects: { kidney: true } },
+      { name: "5'-呈味核苷酸二钠", aliases: ["E635", "I+G"], risk: "medium", category: "增味剂", bannedInfantFood: true, effects: { kidney: true } },
+      { name: "琥珀酸二钠", aliases: ["E625"], risk: "low", category: "增味剂", bannedInfantFood: false, effects: {} },
+      { name: "L-丙氨酸", aliases: [], risk: "safe", category: "增味剂", bannedInfantFood: false, effects: {} },
+      { name: "卡拉胶", aliases: ["鹿角菜胶", "E407", "Carrageenan"], risk: "medium", category: "增稠剂", bannedInfantFood: true, effects: { ibs: true }, note: "IARC评估争议，婴幼儿配方食品中禁用；肠道敏感人群注意" },
+      { name: "黄原胶", aliases: ["汉生胶", "E415", "Xanthan gum"], risk: "low", category: "增稠剂", bannedInfantFood: false, effects: { ibs: true } },
+      { name: "瓜尔胶", aliases: ["E412", "Guar gum"], risk: "low", category: "增稠剂", bannedInfantFood: false, effects: { ibs: true } },
+      { name: "槐豆胶", aliases: ["刺槐豆胶", "E410", "Locust bean gum"], risk: "safe", category: "增稠剂", bannedInfantFood: false, effects: {} },
+      { name: "魔芋粉", aliases: ["魔芋胶", "魔芋葡甘露聚糖", "E425"], risk: "medium", category: "增稠剂", bannedInfantFood: false, effects: { ibs: true }, note: "3岁以下儿童果冻中禁用（窒息风险）" },
+      { name: "阿拉伯胶", aliases: ["E414", "金合欢胶", "Arabic gum"], risk: "safe", category: "增稠剂", bannedInfantFood: false, effects: {} },
+      { name: "明胶", aliases: ["食用明胶", "Gelatin"], risk: "safe", category: "增稠剂", bannedInfantFood: false, effects: {} },
+      { name: "琼脂", aliases: ["E406", "Agar", "洋菜"], risk: "safe", category: "增稠剂", bannedInfantFood: false, effects: {} },
+      { name: "果胶", aliases: ["E440", "Pectin"], risk: "safe", category: "增稠剂", bannedInfantFood: false, effects: {} },
+      { name: "变性淀粉", aliases: ["食用变性淀粉", "羟丙基二淀粉磷酸酯"], risk: "low", category: "增稠剂/稳定剂", bannedInfantFood: false, effects: {} },
+      { name: "微晶纤维素", aliases: ["MCC", "E460"], risk: "safe", category: "增稠剂", bannedInfantFood: false, effects: {} },
+      { name: "卵磷脂", aliases: ["磷脂酰胆碱", "E322", "Lecithin", "大豆卵磷脂"], risk: "safe", category: "乳化剂", bannedInfantFood: false, effects: {} },
+      { name: "单甘油脂肪酸酯", aliases: ["单甘酯", "E471", "甘油一酯"], risk: "safe", category: "乳化剂", bannedInfantFood: false, effects: {} },
+      { name: "双乙酰酒石酸单双甘油酯", aliases: ["E472e", "DATEM"], risk: "low", category: "乳化剂", bannedInfantFood: false, effects: {} },
+      { name: "蔗糖酯", aliases: ["E473", "蔗糖脂肪酸酯"], risk: "low", category: "乳化剂", bannedInfantFood: false, effects: {} },
+      { name: "聚山梨醇酯20", aliases: ["E432", "吐温20", "Polysorbate 20"], risk: "low", category: "乳化剂", bannedInfantFood: false, effects: {} },
+      { name: "聚山梨醇酯60", aliases: ["E435", "吐温60", "Polysorbate 60"], risk: "low", category: "乳化剂", bannedInfantFood: false, effects: {} },
+      { name: "聚山梨醇酯80", aliases: ["E433", "吐温80", "Polysorbate 80"], risk: "low", category: "乳化剂", bannedInfantFood: false, effects: { ibs: true }, note: "近年研究显示可能影响肠道菌群" },
+      { name: "丙二醇脂肪酸酯", aliases: ["E477", "PGFE"], risk: "low", category: "乳化剂", bannedInfantFood: false, effects: {} },
+      { name: "硬脂酰乳酸钠", aliases: ["E481", "SSL"], risk: "low", category: "乳化剂", bannedInfantFood: false, effects: {} },
+      { name: "硬脂酰乳酸钙", aliases: ["E482", "CSL"], risk: "low", category: "乳化剂", bannedInfantFood: false, effects: {} },
+      { name: "碳酸氢钠", aliases: ["小苏打", "E500ii", "Sodium bicarbonate"], risk: "safe", category: "膨松剂", bannedInfantFood: false, effects: {} },
+      { name: "碳酸氢铵", aliases: ["臭粉", "E503ii", "Ammonium bicarbonate"], risk: "low", category: "膨松剂", bannedInfantFood: false, effects: {} },
+      { name: "碳酸钙", aliases: ["E170", "Calcium carbonate"], risk: "safe", category: "膨松剂", bannedInfantFood: false, effects: {} },
+      { name: "焦磷酸钠", aliases: ["E450iii", "TSPP"], risk: "low", category: "膨松剂/稳定剂", bannedInfantFood: false, effects: { kidney: true }, note: "磷酸盐类，过量影响钙磷代谢" },
+      { name: "磷酸氢二钠", aliases: ["E339ii", "DSP"], risk: "low", category: "酸度调节剂", bannedInfantFood: false, effects: { kidney: true } },
+      { name: "磷酸二氢钙", aliases: ["E341i", "MCCP"], risk: "low", category: "膨松剂", bannedInfantFood: false, effects: {} },
+      { name: "磷酸氢钙", aliases: ["E341ii", "DCP"], risk: "low", category: "膨松剂", bannedInfantFood: false, effects: {} },
+      { name: "葡萄糖酸-δ-内酯", aliases: ["GDL", "E575"], risk: "safe", category: "膨松剂/酸度调节剂", bannedInfantFood: false, effects: {} },
+      { name: "柠檬酸", aliases: ["E330", "枸橼酸", "Citric acid"], risk: "safe", category: "酸度调节剂", bannedInfantFood: false, effects: {} },
+      { name: "柠檬酸钠", aliases: ["E331", "枸橼酸钠"], risk: "safe", category: "酸度调节剂", bannedInfantFood: false, effects: {} },
+      { name: "乳酸", aliases: ["E270", "Lactic acid"], risk: "safe", category: "酸度调节剂", bannedInfantFood: false, effects: {} },
+      { name: "乳酸钠", aliases: ["E325", "Sodium lactate"], risk: "safe", category: "酸度调节剂", bannedInfantFood: false, effects: {} },
+      { name: "酒石酸", aliases: ["E334", "Tartaric acid"], risk: "safe", category: "酸度调节剂", bannedInfantFood: false, effects: {} },
+      { name: "苹果酸", aliases: ["E296", "Malic acid"], risk: "safe", category: "酸度调节剂", bannedInfantFood: false, effects: {} },
+      { name: "富马酸", aliases: ["E297", "Fumaric acid"], risk: "low", category: "酸度调节剂", bannedInfantFood: false, effects: {} },
+      { name: "磷酸", aliases: ["E338", "Phosphoric acid"], risk: "medium", category: "酸度调节剂", bannedInfantFood: false, effects: { kidney: true }, note: "软饮料常见，磷酸盐过量影响骨骼钙吸收" },
+      { name: "醋酸", aliases: ["乙酸", "E260", "Acetic acid"], risk: "safe", category: "酸度调节剂", bannedInfantFood: false, effects: {} },
+      { name: "食用香精", aliases: ["食用香料", "食品用香精"], risk: "medium", category: "香精", bannedInfantFood: false, effects: { asthma: true, eczema: true }, note: "配方不透明；哮喘/湿疹儿童注意" },
+      { name: "人工香精", aliases: ["合成香精", "合成香料"], risk: "medium", category: "香精", bannedInfantFood: false, effects: { asthma: true, eczema: true, adhd: true } },
+      { name: "天然香精", aliases: ["天然香料", "天然提取香精"], risk: "low", category: "香精", bannedInfantFood: false, effects: {}, note: "天然来源，相对安全" },
+      { name: "香兰素", aliases: ["vanillin", "香草醛", "E1105"], risk: "low", category: "香精", bannedInfantFood: false, effects: {} },
+      { name: "乙基香兰素", aliases: ["乙基麦芽酚", "ethyl vanillin"], risk: "low", category: "香精", bannedInfantFood: false, effects: {} },
+      { name: "二氧化硅", aliases: ["E551", "二氧化矽", "Silicon dioxide"], risk: "safe", category: "抗结剂", bannedInfantFood: false, effects: {} },
+      { name: "硬脂酸镁", aliases: ["E572", "Magnesium stearate"], risk: "safe", category: "抗结剂", bannedInfantFood: false, effects: {} },
+      { name: "碳酸钙", aliases: ["E170", "Calcium carbonate"], risk: "safe", category: "稳定剂", bannedInfantFood: false, effects: {} },
+      { name: "氯化钙", aliases: ["E509", "Calcium chloride"], risk: "safe", category: "稳定剂", bannedInfantFood: false, effects: {} },
+      { name: "硫酸钙", aliases: ["E516", "石膏", "Calcium sulfate"], risk: "safe", category: "稳定剂", bannedInfantFood: false, effects: {} },
+      { name: "乙二胺四乙酸二钠", aliases: ["EDTA", "E386", "依地酸二钠"], risk: "medium", category: "稳定剂", bannedInfantFood: false, effects: { kidney: true }, note: "螯合剂，可影响矿物质吸收" },
+      { name: "亚铁氰化钾", aliases: ["E536", "黄血盐钾"], risk: "low", category: "抗结剂", bannedInfantFood: false, effects: {} },
+      { name: "氢氧化钠", aliases: ["E524", "烧碱"], risk: "safe", category: "酸度调节剂", bannedInfantFood: false, effects: {} },
+      { name: "碳酸钠", aliases: ["E500i", "纯碱", "Sodium carbonate"], risk: "safe", category: "酸度调节剂", bannedInfantFood: false, effects: {} },
+      { name: "氯化钠", aliases: ["食盐", "E508", "Sodium chloride"], risk: "low", category: "调味剂", bannedInfantFood: false, effects: { kidney: true }, note: "婴幼儿肾脏不宜高盐" },
+      { name: "碳酸钾", aliases: ["E501", "Potassium carbonate"], risk: "safe", category: "酸度调节剂", bannedInfantFood: false, effects: {} },
+      { name: "氯化钾", aliases: ["E508", "Potassium chloride"], risk: "safe", category: "矿物质", bannedInfantFood: false, effects: {} },
     ];
 
     const CONDITIONS_MAP = {
@@ -99,22 +203,53 @@
       return null;
     }
 
-    function assessProduct(productAdditives, babyConditions = []) {
-      // null/undefined 表示成分数据尚未收录
-      if (!productAdditives) return { noData: true, maxRisk: 'unknown', riskCounts: { high:[], medium:[], low:[], safe:[] }, personalWarnings:[], hasPersonalWarnings: false };
+    // 别名查找：支持 name 精确匹配 + aliases 模糊匹配
+    function findAdditive(name) {
+      const n = (name || '').trim();
+      return ADDITIVES_DB.find(a =>
+        a.name === n || (a.aliases && a.aliases.some(alias => n.includes(alias) || alias.includes(n)))
+      );
+    }
+
+    function assessProduct(productAdditives, babyConditions = [], ageMonths = 24) {
+      if (!productAdditives) return {
+        noData: true, maxRisk: 'unknown',
+        riskCounts: { high:[], medium:[], low:[], safe:[] },
+        personalWarnings:[], hasPersonalWarnings: false
+      };
       const riskCounts = { high: [], medium: [], low: [], safe: [] };
       const personalWarnings = [];
+      const isInfant = ageMonths < 12;
+      const isToddler = ageMonths >= 12 && ageMonths <= 36;
 
       productAdditives.forEach(additiveName => {
-        const additive = ADDITIVES_DB.find(a => a.name === additiveName);
+        const additive = findAdditive(additiveName);
         if (!additive) { riskCounts.safe.push(additiveName); return; }
-        const isPersonal = babyConditions.some(c => additive.effects && additive.effects[c]);
-        if (isPersonal) personalWarnings.push({ additive: additiveName, risk: additive.risk, category: additive.category });
-        riskCounts[additive.risk].push(additiveName);
+
+        let effectiveRisk = additive.risk;
+        if (additive.bannedInfantFood && (isInfant || isToddler)) {
+          effectiveRisk = 'high';
+          personalWarnings.push({
+            additive: additiveName, risk: 'high',
+            category: additive.category,
+            reason: 'GB2760 婴幼儿食品禁用'
+          });
+        } else {
+          const isPersonal = babyConditions.some(c => additive.effects && additive.effects[c]);
+          if (isPersonal) {
+            personalWarnings.push({ additive: additiveName, risk: additive.risk, category: additive.category });
+          }
+        }
+        riskCounts[effectiveRisk].push(additiveName);
+      });
+
+      const seen = new Set();
+      const dedupedWarnings = personalWarnings.filter(w => {
+        if (seen.has(w.additive)) return false; seen.add(w.additive); return true;
       });
 
       const maxRisk = RISK_ORDER.find(r => riskCounts[r].length > 0) || 'safe';
-      return { noData: false, maxRisk, riskCounts, personalWarnings, hasPersonalWarnings: personalWarnings.length > 0 };
+      return { noData: false, maxRisk, riskCounts, personalWarnings: dedupedWarnings, hasPersonalWarnings: dedupedWarnings.length > 0 };
     }
 
     // ══════════════════════════════════════════════
@@ -278,14 +413,14 @@
 
       const histItems = useMemo(() => history.filter(item => {
         if (histFilter === '全部') return true;
-        const a = assessProduct(item.additives, baby.conditions);
+        const a = assessProduct(item.additives, baby.conditions, baby.ageMonths);
         if (histFilter === '高风险') return a.maxRisk === 'high';
         if (histFilter === '中风险') return a.maxRisk === 'medium';
         if (histFilter === '安全') return a.maxRisk === 'safe' || a.maxRisk === 'low';
         return true;
       }), [history, histFilter, baby.conditions]);
 
-      const assess = product ? assessProduct(product.additives, baby.conditions) : null;
+      const assess = product ? assessProduct(product.additives, baby.conditions, baby.ageMonths) : null;
 
       const RiskBadge = ({ level }) => (
         <span className={`px-2 py-0.5 rounded-full text-white text-xs font-bold ${RISK_CONFIG[level].badge}`}>
@@ -474,7 +609,7 @@
                     {/* 最近扫描 */}
                     <div className="text-sm font-bold text-gray-700 mb-2">最近扫描</div>
                     {history.slice(0,3).map((item,i) => {
-                      const a = assessProduct(item.additives, baby.conditions);
+                      const a = assessProduct(item.additives, baby.conditions, baby.ageMonths);
                       return (
                         <button key={i} onClick={() => setProduct(item)}
                           className={`w-full flex items-center gap-3 bg-white rounded-xl border-2 ${RISK_CONFIG[a.maxRisk].border} p-3 mb-2 text-left shadow-sm hover:shadow transition`}>
@@ -515,7 +650,7 @@
                   <div className="flex-1 overflow-y-auto p-3">
                     <div className="grid grid-cols-2 gap-2">
                       {searchResults.map(p => {
-                        const a = assessProduct(p.additives, baby.conditions);
+                        const a = assessProduct(p.additives, baby.conditions, baby.ageMonths);
                         return (
                           <button key={p.id} onClick={() => setProduct(p)}
                             className={`p-3 rounded-2xl border-2 ${RISK_CONFIG[a.maxRisk].border} ${RISK_CONFIG[a.maxRisk].bg} text-left hover:shadow transition`}>
@@ -549,7 +684,7 @@
                     {histItems.length === 0
                       ? <div className="text-center text-gray-400 text-sm mt-12">暂无记录</div>
                       : histItems.map((item,i) => {
-                          const a = assessProduct(item.additives, baby.conditions);
+                          const a = assessProduct(item.additives, baby.conditions, baby.ageMonths);
                           return (
                             <button key={i} onClick={() => setProduct(item)}
                               className={`w-full flex items-center gap-3 bg-white rounded-2xl border-2 ${RISK_CONFIG[a.maxRisk].border} p-3 text-left shadow-sm hover:shadow transition`}>
@@ -714,7 +849,7 @@
                 {/* 产品列表 */}
                 <div className="space-y-2">
                   {searchProducts('', scanCat, 80).map(p => {
-                    const a = assessProduct(p.additives, baby.conditions);
+                    const a = assessProduct(p.additives, baby.conditions, baby.ageMonths);
                     return (
                       <button key={p.id} onClick={() => selectProduct(p)}
                         className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 text-left transition">
