@@ -8,6 +8,7 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://imgcache.qq.com/qcloud/tcbjs/1.10.0/tcb.js"></script>
   <style>
     body { margin: 0; background: #e5e7eb; font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', sans-serif; }
     * { box-sizing: border-box; }
@@ -185,6 +186,17 @@
     };
 
     const RISK_ORDER = ['high', 'medium', 'low', 'safe'];
+
+    // ── CloudBase 初始化 ──────────────────────────────────────────
+    const CLOUDBASE_ENV = 'baomaweishi-007-d4f1bauq1936643d';
+    const WX_APPID_LOGIN = 'wx64eef1d65b89c2b1';
+    let _cbApp = null;
+    function getCloudApp() {
+      if (!_cbApp && typeof tcb !== 'undefined') {
+        _cbApp = tcb.init({ env: CLOUDBASE_ENV });
+      }
+      return _cbApp;
+    }
 
     // ── 极速数据 API 集成 ──────────────────────────────
     const JISUAPI_KEY = 'eb02fb2bb0fecffd';
@@ -367,12 +379,81 @@
       const [editBaby, setEditBaby] = useState(false);
       const [newAllergy, setNewAllergy] = useState('');
       const [apiLoading, setApiLoading] = useState(false);
+      const [cloudUser, setCloudUser] = useState(null);   // { userId, nickname, avatar }
+      const [syncStatus, setSyncStatus] = useState('idle'); // idle|loading|synced|error
+      const { useEffect } = React;
 
-      const selectProduct = (p) => {
+      // 页面加载时检查登录态 / 处理微信 OAuth 回调
+      useEffect(() => {
+        const code = new URLSearchParams(window.location.search).get('code');
+        if (code) { handleWxCallback(code); return; }
+        checkExistingSession();
+      }, []);
+
+      async function checkExistingSession() {
+        const app = getCloudApp();
+        if (!app) return;
+        try {
+          const state = await app.auth({ persistence: 'local' }).getLoginState();
+          if (state) { await refreshCloudData(app); }
+        } catch(_) {}
+      }
+
+      async function handleWxCallback(code) {
+        setSyncStatus('loading');
+        const app = getCloudApp();
+        if (!app) { setSyncStatus('error'); return; }
+        try {
+          const res = await app.callFunction({ name: 'auth', data: { code } });
+          if (res.result.code === 0) {
+            await app.auth({ persistence: 'local' }).signInWithTicket(res.result.data.token);
+            setCloudUser({ userId: res.result.data.userId, nickname: res.result.data.nickname, avatar: res.result.data.avatar });
+            window.history.replaceState({}, '', window.location.pathname);
+            await refreshCloudData(app);
+          } else { setSyncStatus('error'); }
+        } catch(e) { setSyncStatus('error'); console.error('wx login error', e); }
+      }
+
+      async function refreshCloudData(appInst) {
+        setSyncStatus('loading');
+        const app = appInst || getCloudApp();
+        if (!app) return;
+        try {
+          const [babyRes, histRes] = await Promise.all([
+            app.callFunction({ name: 'user', data: { action: 'getBabies' } }),
+            app.callFunction({ name: 'scan', data: { action: 'getHistory', limit: 30 } }),
+          ]);
+          if (babyRes.result.code === 0 && babyRes.result.data.length > 0) {
+            const cb = babyRes.result.data[0];
+            setBaby({ name: cb.name || '宝宝', ageMonths: cb.ageMonths || 12, conditions: cb.conditions || [], allergies: cb.allergies || [] });
+          }
+          if (histRes.result.code === 0) {
+            const cloudHist = histRes.result.data.map(r => ({ ...(r.product || {}), scanDate: (r.scannedAt || '').slice(0, 10) })).filter(r => r.id);
+            if (cloudHist.length > 0) setHistory(cloudHist);
+          }
+          setSyncStatus('synced');
+        } catch(e) { setSyncStatus('error'); console.error('cloud sync error', e); }
+      }
+
+      function wxLoginRedirect() {
+        const redirect = encodeURIComponent(window.location.href.split('?')[0]);
+        window.location.href = `https://open.weixin.qq.com/connect/oauth2/authorize?appid=${WX_APPID_LOGIN}&redirect_uri=${redirect}&response_type=code&scope=snsapi_userinfo&state=login#wechat_redirect`;
+      }
+
+      const selectProduct = async (p) => {
         setProduct(p);
         setShowModal(false);
         setBarcodeInput(''); setBarcodeErr('');
         setHistory(prev => [{ ...p, scanDate: new Date().toISOString().slice(0,10) }, ...prev.filter(h=>h.id!==p.id)].slice(0,20));
+        // 登录后自动同步扫描记录到云端
+        const app = getCloudApp();
+        if (app && cloudUser) {
+          try {
+            const a = assessProduct(p.additives, baby.conditions, baby.ageMonths);
+            await app.callFunction({ name: 'scan', data: { action: 'saveScan', product: p, babyId: 'baby_0', assess: { maxRisk: a.maxRisk } } });
+            setSyncStatus('synced');
+          } catch(_) {}
+        }
       };
 
       const lookupBarcode = async () => {
@@ -572,7 +653,11 @@
                         <div className="font-black text-xl">🛡️ 宝妈卫士</div>
                         <div className="text-teal-100 text-xs">守护 {baby.name} · {baby.ageMonths}个月</div>
                       </div>
-                      <Shield size={24} className="text-white/80" />
+                      <div className="flex flex-col items-end gap-1">
+                        <Shield size={24} className="text-white/80" />
+                        {syncStatus === 'synced' && <span className="text-xs text-teal-200">☁️ 已同步</span>}
+                        {syncStatus === 'loading' && <span className="text-xs text-teal-200">⏳ 同步中</span>}
+                      </div>
                     </div>
                     <div className="flex items-center bg-white/20 rounded-xl px-3 py-2">
                       <Search size={14} className="text-white/60 mr-2" />
@@ -718,7 +803,18 @@
                           <div className="text-teal-100 text-sm">{baby.ageMonths}个月 · {baby.conditions.length}项关注</div>
                         </div>
                       </div>
-                      <button onClick={() => setEditBaby(!editBaby)}
+                      <button onClick={async () => {
+                          if (editBaby) {
+                            const app = getCloudApp();
+                            if (app && cloudUser) {
+                              try {
+                                await app.callFunction({ name: 'user', data: { action: 'saveBaby', baby: { ...baby, id: 'baby_0' } } });
+                                setSyncStatus('synced');
+                              } catch(_) {}
+                            }
+                          }
+                          setEditBaby(!editBaby);
+                        }}
                         className={`px-3 py-1.5 rounded-xl text-sm font-bold ${editBaby ? 'bg-white text-teal-700' : 'bg-white/20 text-white'}`}>
                         {editBaby ? '💾 保存' : '✏️ 编辑'}
                       </button>
@@ -768,6 +864,34 @@
                         )}
                       </div>
                     </div>
+
+                    {/* 云端同步卡 */}
+                    {cloudUser ? (
+                      <div className="bg-teal-50 rounded-2xl p-4 border border-teal-100 flex items-center gap-3">
+                        {cloudUser.avatar
+                          ? <img src={cloudUser.avatar} className="w-10 h-10 rounded-full border border-teal-200" />
+                          : <div className="w-10 h-10 rounded-full bg-teal-200 flex items-center justify-center text-lg">👤</div>}
+                        <div className="flex-1">
+                          <div className="text-sm font-bold text-teal-800">{cloudUser.nickname || '已登录'}</div>
+                          <div className="text-xs text-teal-600">
+                            {syncStatus === 'synced' && '☁️ 已云端同步'}
+                            {syncStatus === 'loading' && '⏳ 同步中…'}
+                            {syncStatus === 'error' && '⚠️ 同步失败'}
+                            {syncStatus === 'idle' && '☁️ 云端已连接'}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                        <div className="text-sm font-bold text-gray-700 mb-1">☁️ 云端同步</div>
+                        <div className="text-xs text-gray-500 mb-3">登录后，宝宝档案和扫描记录自动备份云端，换手机不丢失。</div>
+                        <button onClick={wxLoginRedirect}
+                          className="w-full bg-teal-600 hover:bg-teal-700 text-white py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2">
+                          <span>微信一键登录</span>
+                        </button>
+                        <div className="text-xs text-gray-400 mt-2 text-center">仅在微信中打开时可用</div>
+                      </div>
+                    )}
 
                     {/* 说明卡 */}
                     <div className="bg-teal-50 rounded-2xl p-4 border border-teal-100">
