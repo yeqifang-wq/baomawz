@@ -497,6 +497,11 @@
       const [editBaby, setEditBaby] = useState(false);
       const [newAllergy, setNewAllergy] = useState('');
       const [apiLoading, setApiLoading] = useState(false);
+      const [privacyConsented, setPrivacyConsented] = useState(() => {
+        try { return localStorage.getItem('bmws_privacy_ok') === '1'; } catch(_) { return false; }
+      });
+      const [showPrivacyPopup, setShowPrivacyPopup] = useState(false);
+      const [pendingHealthEdit, setPendingHealthEdit] = useState(false);
       const [cloudUser, setCloudUser] = useState(null);   // { userId, nickname, avatar }
       const [syncStatus, setSyncStatus] = useState('idle'); // idle|loading|synced|error
       const { useEffect } = React;
@@ -755,6 +760,11 @@
                       </div>
                     )}
 
+                    {/* 医疗免责声明 */}
+                    <div className="text-xs text-gray-400 text-center px-2 leading-relaxed">
+                      ⚕️ 本结果基于 GB 2760-2024 国标，仅供参考，不构成医疗诊断。请遵医嘱。
+                    </div>
+
                     <button onClick={() => setProduct(null)}
                       className="w-full bg-teal-600 hover:bg-teal-700 text-white py-3 rounded-2xl font-bold text-sm">
                       ← 换一个产品
@@ -947,7 +957,7 @@
                           const selected = baby.conditions.includes(id);
                           return (
                             <button key={id}
-                              onClick={() => editBaby && setBaby({...baby, conditions: selected ? baby.conditions.filter(c=>c!==id) : [...baby.conditions, id]})}
+                              onClick={() => editBaby && requestHealthDataConsent(() => setBaby({...baby, conditions: selected ? baby.conditions.filter(c=>c!==id) : [...baby.conditions, id]}))}
                               className={`text-xs px-3 py-1.5 rounded-full border font-medium transition ${
                                 selected ? 'bg-red-500 text-white border-red-500' : 'bg-gray-50 text-gray-600 border-gray-200'
                               } ${editBaby ? 'cursor-pointer' : 'cursor-default'}`}>
@@ -1019,6 +1029,20 @@
                         自动生成个性化风险预警，并标注具体触发原因。
                       </div>
                     </div>
+
+                    {/* 隐私与数据 */}
+                    <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                      <div className="text-sm font-bold text-gray-700 mb-1">🔒 数据与隐私</div>
+                      <div className="text-xs text-gray-500 mb-3 leading-relaxed">
+                        宝宝健康信息属于儿童敏感个人信息，加密存储，仅用于风险评估，不用于广告。
+                        <a href="https://yeqifang-wq.github.io/baomawz/privacy.html"
+                           className="text-teal-600 underline ml-1" target="_blank">查看隐私政策</a>
+                      </div>
+                      <button onClick={deleteAllData}
+                        className="w-full border border-red-300 text-red-600 text-xs py-2 rounded-xl hover:bg-red-50 transition">
+                        🗑️ 删除全部宝宝档案和扫码记录
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1046,6 +1070,40 @@
             )}
           </div>
 
+
+          {/* ── 儿童健康数据授权弹窗 ── */}
+          {showPrivacyPopup && (
+            <div className="absolute inset-0 bg-black/60 flex items-end justify-center z-50">
+              <div className="w-full bg-white rounded-t-3xl p-5 pb-8">
+                <div className="text-center mb-4">
+                  <div className="text-2xl mb-2">🔒</div>
+                  <div className="font-bold text-gray-900 text-base">儿童健康信息授权</div>
+                </div>
+                <div className="text-sm text-gray-600 leading-relaxed mb-4 bg-amber-50 rounded-xl p-3 border border-amber-100">
+                  <p className="font-medium text-amber-800 mb-2">您即将录入宝宝的健康信息</p>
+                  <p>根据《儿童个人信息网络保护规定》，我们需要您明确授权：</p>
+                  <ul className="mt-2 space-y-1 text-xs">
+                    <li>· 收集内容：疾病标签（如G6PD缺乏）、过敏原列表</li>
+                    <li>· 用途：生成个性化添加剂风险预警，不用于其他目的</li>
+                    <li>· 存储：加密存储，不共享给任何第三方</li>
+                    <li>· 删除：可随时在「宝宝」页面一键删除全部数据</li>
+                  </ul>
+                </div>
+                <a href="https://yeqifang-wq.github.io/baomawz/privacy.html"
+                   className="block text-center text-xs text-teal-600 underline mb-4" target="_blank">
+                  查看完整隐私政策
+                </a>
+                <button onClick={confirmConsent}
+                  className="w-full bg-teal-600 text-white py-3 rounded-2xl font-bold text-sm mb-2">
+                  我已阅读，同意授权录入宝宝健康信息
+                </button>
+                <button onClick={declineConsent}
+                  className="w-full bg-gray-100 text-gray-600 py-2.5 rounded-2xl text-sm">
+                  暂不录入
+                </button>
+              </div>
+            </div>
+          )}
           {/* ── 扫码弹层 ── */}
           {showModal && (
             <div className="fixed inset-0 bg-black/60 flex items-end justify-center z-50">
